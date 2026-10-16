@@ -47,7 +47,12 @@ export async function linkDeAbertura(a: AppInfo, vincular = true): Promise<strin
 }
 
 export async function abrirApp(a: AppInfo, vincular = true): Promise<string | null> {
-  const link = await linkDeAbertura(a, vincular);
+  let link: string | null;
+  try {
+    link = await linkDeAbertura(a, vincular);
+  } catch (e) {
+    return (e as Error).message;
+  }
   if (!link) return 'Cadastre o endereço deste app em Ajustes.';
   try {
     if (a.tipo === 'android') {

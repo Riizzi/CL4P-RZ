@@ -4,6 +4,7 @@ import { APP_IDS, NOME_FONTE } from '../../core/types.js';
 import { useEffect, useState } from 'react';
 import { baixarAtualizacao, verificarSeFazUmDia, type InfoAtualizacao } from '../../services/atualizacao.js';
 import type { Dados } from '../../services/dados.js';
+import { HojeLaForaCard } from '../AgendaClima.tsx';
 import { AchadosCard, HumorCard, SaudeHojeCard } from '../BemEstar.tsx';
 import { Aviso, Barra, Cartao, Numero, Rotulo, brl, haQuanto, hhmm } from '../kit.tsx';
 
@@ -40,6 +41,8 @@ export default function Hoje({ d, irPara }: { d: Dados; irPara: (aba: 'apps' | '
       {d.erro && d.fonte !== 'exemplo' && <Aviso>{d.erro} Mostrando a última cópia salva.</Aviso>}
 
       <HumorCard />
+
+      <HojeLaForaCard d={d} irPara={irPara} />
 
       <Cartao>
         <div className="flex items-start gap-3">

@@ -6,10 +6,13 @@
  * Datas: ISO 8601 (string) ou epoch em ms quando indicado.
  */
 
-export type AppId = 'retrofin' | 'routinetracker' | 'smartpantry' | 'wishwatch' | 'papertrail' | 'rotmg' | 'saude' | 'humor';
+export type AppId = 'retrofin' | 'routinetracker' | 'smartpantry' | 'wishwatch' | 'papertrail' | 'rotmg' | 'saude' | 'humor' | 'agenda' | 'clima';
 
-/** Fontes de dados. As duas últimas são do próprio hub: Health Connect (relógio) e registro de humor. */
-export const APP_IDS: AppId[] = ['retrofin', 'routinetracker', 'smartpantry', 'wishwatch', 'papertrail', 'rotmg', 'saude', 'humor'];
+/**
+ * Fontes de dados. Saúde (Health Connect) e humor vêm do próprio hub; agenda (link iCal) e
+ * clima (Open-Meteo) o servidor do hub busca sozinho.
+ */
+export const APP_IDS: AppId[] = ['retrofin', 'routinetracker', 'smartpantry', 'wishwatch', 'papertrail', 'rotmg', 'saude', 'humor', 'agenda', 'clima'];
 
 export const NOME_FONTE: Record<AppId, string> = {
   retrofin: 'RetroFin',
@@ -20,6 +23,8 @@ export const NOME_FONTE: Record<AppId, string> = {
   rotmg: 'RotMG Account Manager',
   saude: 'Saúde (relógio)',
   humor: 'Humor',
+  agenda: 'Agenda',
+  clima: 'Clima',
 };
 
 export interface Envelope<T = unknown> {
@@ -234,6 +239,48 @@ export interface HumorData {
   registros: HumorRegistro[];
 }
 
+// ------------------------------------------------------------------ Agenda (link iCal, lido pelo servidor do hub)
+
+export interface AgendaEvento {
+  /** epoch ms */
+  inicio: number;
+  fim: number;
+  diaInteiro: boolean;
+  titulo: string;
+  /** marcado como "disponível" na agenda (não ocupa o horário) */
+  livre?: boolean;
+  /** nome que você deu ao link em Ajustes */
+  calendario?: string;
+}
+
+export interface AgendaData {
+  eventos: AgendaEvento[];
+  /** janela lida, epoch ms */
+  desde: number;
+  ate: number;
+  calendarios: string[];
+}
+
+// ------------------------------------------------------------------ Clima (Open-Meteo, lido pelo servidor do hub)
+
+export interface ClimaDia {
+  /** YYYY-MM-DD no fuso local */
+  dia: string;
+  tMax: number;
+  tMin: number;
+  /** mm no dia */
+  chuvaMm: number;
+  /** código WMO do tempo (0 céu limpo, 61 chuva…) */
+  codigo: number;
+}
+
+export interface ClimaData {
+  local: string;
+  lat: number;
+  lon: number;
+  dias: ClimaDia[];
+}
+
 export interface DataMap {
   retrofin: RetroFinData;
   routinetracker: RoutineData;
@@ -243,6 +290,8 @@ export interface DataMap {
   rotmg: RotmgData;
   saude: SaudeData;
   humor: HumorData;
+  agenda: AgendaData;
+  clima: ClimaData;
 }
 
 export type Snapshots = { [K in AppId]?: Envelope<DataMap[K]> };

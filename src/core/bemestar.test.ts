@@ -61,3 +61,42 @@ test('sem dias suficientes, nenhum achado', () => {
   assert.equal(achados(montarDias(s, AGORA - 10 * 86_400_000, AGORA)).length, 0);
   assert.equal(MIN_DIAS, 3);
 });
+
+test('agenda e clima entram no dia e geram achados', () => {
+  const dias = 12;
+  const inicio = T('2026-10-01T03:00:00Z');
+  const eventos = [];
+  const clima = [];
+  const registros = [];
+  const txs = [];
+  for (let i = 0; i < dias; i++) {
+    const dia = `2026-10-${String(i + 1).padStart(2, '0')}`;
+    const cheio = i % 2 === 0;
+    const chuva = i % 3 === 0;
+    if (cheio) for (const h of [8, 10, 14]) eventos.push({ inicio: T(`${dia}T${String(h).padStart(2, '0')}:00:00-03:00`), fim: T(`${dia}T${String(h + 1).padStart(2, '0')}:00:00-03:00`), diaInteiro: false, titulo: 'Reunião' });
+    eventos.push({ inicio: T(`${dia}T00:00:00-03:00`), fim: T(`${dia}T23:59:00-03:00`), diaInteiro: true, titulo: 'Feriado?' });
+    clima.push({ dia, tMax: 26, tMin: 17, chuvaMm: chuva ? 10 : 0, codigo: chuva ? 63 : 1 });
+    registros.push({ id: dia, ts: T(`${dia}T21:00:00-03:00`), nota: (cheio ? 2 : 4) as 2 | 4 });
+    txs.push({ id: dia, date: dia, description: 'iFood', amount: chuva ? -80 : -20, category: 'Delivery' });
+  }
+  const s: Snapshots = {
+    agenda: { app: 'agenda', schema: 1, generatedAt: '', data: { eventos, desde: inicio, ate: inicio + 40 * 86_400_000, calendarios: ['Pessoal'] } },
+    clima: { app: 'clima', schema: 1, generatedAt: '', data: { local: 'BH', lat: 0, lon: 0, dias: clima } },
+    humor: { app: 'humor', schema: 1, generatedAt: '', data: { registros } },
+    retrofin: { app: 'retrofin', schema: 1, generatedAt: '', data: { accounts: [], categories: [], transactions: txs } },
+  };
+  const ds = montarDias(s, inicio, T('2026-10-12T23:00:00-03:00'));
+  assert.equal(ds[0].compromissos, 3); // dia inteiro não conta
+  assert.equal(ds[0].primeiroCompromisso, 8);
+  assert.equal(ds[1].compromissos, 0);
+  assert.equal(ds[0].chuvaMm, 10);
+  const textos = achados(ds).map((a) => a.texto).join('\n');
+  assert.match(textos, /3 ou mais compromissos/);
+  assert.match(textos, /Dia de chuva custa mais/);
+});
+
+test('sem agenda, compromissos fica null (não vira "dia livre")', () => {
+  const ds = montarDias({}, T('2026-10-01T03:00:00Z'), T('2026-10-02T23:00:00-03:00'));
+  assert.equal(ds[0].compromissos, null);
+  assert.equal(ds[0].tMax, null);
+});

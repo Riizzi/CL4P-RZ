@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { APP_IDS, NOME_FONTE } from '../../core/types.js';
 import { APPS } from '../../services/apps.js';
 import { apagarSnapshot, saude, type Saude } from '../../services/api.js';
-import { apiBase, gerarCodigoApp, getConfig, isNative, lerCodigo, setConfig } from '../../services/config.js';
+import { apiBase, gerarCodigoApp, getConfig, isNative, lerCodigo, normalizarEndereco, setConfig } from '../../services/config.js';
 import type { Dados } from '../../services/dados.js';
+import { AgendaClimaAjustes } from '../AgendaClima.tsx';
 import AtualizacaoCard from '../AtualizacaoCard.tsx';
 import { SaudeAjustes } from '../SaudeAjustes.tsx';
 import { Botao, Campo, Cartao, Chave, Rotulo, estiloInput } from '../kit.tsx';
@@ -20,7 +21,9 @@ export default function Ajustes({ d }: { d: Dados }) {
   const [colar, setColar] = useState('');
 
   const salvar = () => {
-    setConfig({ api: api.trim().replace(/\/+$/, ''), token: token.trim(), urls });
+    const a = normalizarEndereco(api);
+    setApi(a);
+    setConfig({ api: a, token: token.trim(), urls });
     setTeste('Salvo.');
   };
 
@@ -29,6 +32,10 @@ export default function Ajustes({ d }: { d: Dados }) {
     setTeste('Testando…');
     try {
       const s: Saude = await saude();
+      if (s.chave && s.chaveConfere === false) {
+        setTeste('Servidor no ar, mas a chave colada aqui é diferente da CL4P_TOKEN da Vercel. Copie a mesma nos dois lugares (sem espaço nem aspas). Se mudou na Vercel, faça Redeploy.');
+        return;
+      }
       const faltas = [!s.chave && 'CL4P_TOKEN', s.chaveFraca && 'CL4P_TOKEN mais longa (32+ caracteres)', s.banco !== 'upstash' && 'Upstash (usando arquivo local)', !s.gemini && 'GEMINI_API_KEY'].filter(Boolean);
       await d.atualizar();
       setTeste(faltas.length ? `Servidor no ar. Falta configurar: ${faltas.join(', ')}.` : `Tudo certo. Banco Upstash, Gemini ${s.modelo}.`);
@@ -39,9 +46,11 @@ export default function Ajustes({ d }: { d: Dados }) {
 
   useEffect(() => {
     const t = c.token;
-    if (!t) return setCodigos({});
+    if (!t || !apiBase()) return setCodigos({});
     let vivo = true;
-    void Promise.all(APPS.map(async (a) => [a.id, await gerarCodigoApp(a.id, apiBase() || c.api, t)] as const)).then((pares) => vivo && setCodigos(Object.fromEntries(pares)));
+    void Promise.all(APPS.map(async (a) => [a.id, await gerarCodigoApp(a.id, apiBase(), t)] as const))
+      .then((pares) => vivo && setCodigos(Object.fromEntries(pares)))
+      .catch(() => vivo && setCodigos({}));
     return () => {
       vivo = false;
     };
@@ -86,6 +95,13 @@ export default function Ajustes({ d }: { d: Dados }) {
         </div>
         {teste && <p className="text-sm text-[#57534E]">{teste}</p>}
       </Cartao>
+
+      {c.token && !apiBase() && (
+        <Cartao className="space-y-1">
+          <Rotulo>Códigos de vínculo</Rotulo>
+          <p className="text-sm text-[#B4413A]">Preencha o endereço do servidor (Vercel) e toque em Salvar. Sem ele os códigos não funcionam.</p>
+        </Cartao>
+      )}
 
       {Object.keys(codigos).length > 0 && (
         <Cartao className="space-y-2">
@@ -137,6 +153,8 @@ export default function Ajustes({ d }: { d: Dados }) {
       </Cartao>
 
       <SaudeAjustes aoSincronizar={() => void d.atualizar()} />
+
+      {c.token && <AgendaClimaAjustes aoMudar={() => void d.atualizar()} />}
 
       {isNative && <AtualizacaoCard repo="Riizzi/CL4P-RZ" apk="CL4P-RZ.apk" />}
 

@@ -220,7 +220,7 @@ function Tabela({ cab, linhas }: { cab: string[]; linhas: (string | ReactNode)[]
         <thead>
           <tr>
             {cab.map((c, i) => (
-              <th key={c} className={`text-[10px] font-mono font-bold uppercase text-[#78716C] pb-2 ${i ? 'text-right' : 'text-left'}`}>
+              <th key={c} className={`text-[10px] font-mono font-bold uppercase text-[#78716C] pb-2 ${i ? 'text-right pl-3' : 'text-left'}`}>
                 {c}
               </th>
             ))}
@@ -230,7 +230,7 @@ function Tabela({ cab, linhas }: { cab: string[]; linhas: (string | ReactNode)[]
           {linhas.map((l, i) => (
             <tr key={i} className="border-t border-dashed border-[#E8DFD1]">
               {l.map((c, j) => (
-                <td key={j} className={`py-2 ${j ? 'text-right font-mono' : 'pr-2'}`}>
+                <td key={j} className={`py-2 ${j ? 'text-right font-mono pl-3 whitespace-nowrap' : 'pr-2'}`}>
                   {c}
                 </td>
               ))}
@@ -297,6 +297,62 @@ export function BemEstarSecoes({ d }: { d: Dados }) {
           />
         ) : (
           <p className="text-sm text-[#78716C]">Registre o humor por alguns dias para ver este cruzamento.</p>
+        )}
+      </Secao>
+
+      <Secao titulo="Agenda × humor, sono e gastos" fontes="Agenda × Humor × relógio × RetroFin">
+        {b.temAgenda ? (
+          <>
+            <Tabela
+              cab={['Agenda', 'Humor', 'Sono', 'Impulso']}
+              linhas={b.porAgenda.map((g) => [
+                <span key="r">
+                  {g.rotulo}
+                  <span className="block text-[11px] text-[#78716C]">
+                    {g.dias} dias
+                    <Pouco g={g} />
+                  </span>
+                </span>,
+                fmt(g.humor),
+                g.sonoH !== null ? `${fmt(g.sonoH)} h` : '—',
+                g.gastoImpulso !== null ? brl(g.gastoImpulso, false) : '—',
+              ])}
+            />
+            {b.porCompromissoCedo.length === 2 && b.porCompromissoCedo.every((g) => g.sonoH !== null) && (
+              <p className="text-xs text-[#57534E]">
+                Sono na noite antes de compromisso antes das 9h: <strong className="font-mono">{fmt(b.porCompromissoCedo[0].sonoH)} h</strong>, contra{' '}
+                <strong className="font-mono">{fmt(b.porCompromissoCedo[1].sonoH)} h</strong> quando o dia começa mais tarde.
+              </p>
+            )}
+            <p className="text-[11px] text-[#78716C]">Conta só compromissos com horário. Eventos de dia inteiro e marcados como "disponível" ficam de fora.</p>
+          </>
+        ) : (
+          <p className="text-sm text-[#78716C]">Conecte a sua agenda em Ajustes → Agenda e clima.</p>
+        )}
+      </Secao>
+
+      <Secao titulo="Clima × humor, passos e gastos" fontes="Clima × Humor × relógio × RetroFin">
+        {b.temClima ? (
+          <>
+            <Tabela
+              cab={['Tempo', 'Humor', 'Passos', 'Impulso']}
+              linhas={b.porClima.map((g) => [
+                <span key="r">
+                  {g.rotulo}
+                  <span className="block text-[11px] text-[#78716C]">
+                    {g.dias} dias
+                    <Pouco g={g} />
+                  </span>
+                </span>,
+                fmt(g.humor),
+                g.passos !== null ? g.passos.toLocaleString('pt-BR') : '—',
+                g.gastoImpulso !== null ? brl(g.gastoImpulso, false) : '—',
+              ])}
+            />
+            <p className="text-[11px] text-[#78716C]">Chuva: 2 mm ou mais no dia. Quente: máxima de 30 °C ou mais. Impulso: delivery, lanches, cafés, lazer e compras por dia.</p>
+          </>
+        ) : (
+          <p className="text-sm text-[#78716C]">O clima chega sozinho depois da primeira atualização com o servidor.</p>
         )}
       </Secao>
 
