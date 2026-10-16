@@ -6,7 +6,7 @@ import { getConfig } from '../../services/config.js';
 import type { Dados } from '../../services/dados.js';
 import { Aviso, Botao, Cartao, haQuanto } from '../kit.tsx';
 
-export const ICONES: Record<AppId, LucideIcon> = {
+export const ICONES: Partial<Record<AppId, LucideIcon>> = {
   retrofin: Wallet,
   routinetracker: MapPin,
   smartpantry: ShoppingBasket,
@@ -32,7 +32,7 @@ export default function Apps({ d, irAjustes }: { d: Dados; irAjustes: () => void
       )}
       {msg && <Aviso>{msg}</Aviso>}
       {APPS.map((a) => {
-        const Icone = ICONES[a.id];
+        const Icone = ICONES[a.id] ?? Wallet;
         const e = d.fonte === 'exemplo' ? undefined : d.snapshots[a.id];
         const semUrl = a.tipo === 'web' && !urlDoApp(a);
         return (

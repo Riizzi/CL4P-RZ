@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CL4P-RZ · Privacidade</title>
+<style>
+  body { margin: 0; padding: 24px 16px; background: #FAF7F2; color: #292524; font: 15px/1.6 system-ui, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 20px; } h2 { font-size: 16px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+<h1>CL4P-RZ · Como os dados de saúde são usados</h1>
+<p>O CL4P-RZ é um app pessoal. Ele só <strong>lê</strong> do Health Connect: sono, passos, calorias ativas, frequência cardíaca em repouso, variabilidade da frequência cardíaca e treinos. Nunca grava nada no Health Connect.</p>
+<h2>Para que</h2>
+<p>Para mostrar ao próprio dono do app cruzamentos com a rotina, o humor e os gastos (por exemplo: humor nos dias com treino, sono e gastos do dia seguinte).</p>
+<h2>Onde ficam</h2>
+<p>Um resumo por dia é enviado ao servidor pessoal do dono do app (Vercel + Upstash), cifrado com AES-256-GCM e protegido por uma chave que só ele tem. Não há outros usuários, anúncios ou venda de dados.</p>
+<h2>Inteligência artificial</h2>
+<p>O chat recebe só médias e totais (sem séries de batimentos, sem anotações de humor) e roda no Gemini. Isso pode ser desligado não usando o chat.</p>
+<h2>Como apagar</h2>
+<p>Revogue o acesso em Health Connect → Permissões de apps → CL4P-RZ, e apague a fonte "Saúde" em Ajustes do CL4P-RZ.</p>
+</main>
+</body>
+</html>

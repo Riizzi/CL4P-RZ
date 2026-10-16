@@ -1,8 +1,8 @@
 import { Clock, MapPin, Receipt, ShoppingBasket, Tag } from 'lucide-react';
 import { ROTULO_CATEGORIA_LUGAR } from '../../core/metrics.js';
-import { APP_IDS } from '../../core/types.js';
+import { APP_IDS, NOME_FONTE } from '../../core/types.js';
 import type { Dados } from '../../services/dados.js';
-import { appPorId } from '../../services/apps.js';
+import { AchadosCard, HumorCard, SaudeHojeCard } from '../BemEstar.tsx';
 import { Aviso, Barra, Cartao, Numero, Rotulo, brl, haQuanto, hhmm } from '../kit.tsx';
 
 const rotuloCat = (c: string) => ROTULO_CATEGORIA_LUGAR[c as keyof typeof ROTULO_CATEGORIA_LUGAR] ?? c;
@@ -24,6 +24,8 @@ export default function Hoje({ d, irPara }: { d: Dados; irPara: (aba: 'apps' | '
         </Aviso>
       )}
       {d.erro && d.fonte !== 'exemplo' && <Aviso>{d.erro} Mostrando a última cópia salva.</Aviso>}
+
+      <HumorCard />
 
       <Cartao>
         <div className="flex items-start gap-3">
@@ -54,6 +56,8 @@ export default function Hoje({ d, irPara }: { d: Dados; irPara: (aba: 'apps' | '
         )}
       </Cartao>
 
+      <SaudeHojeCard d={d} />
+
       <div className="grid grid-cols-2 gap-3">
         <Numero rotulo="Gasto hoje" valor={brl(hoje.gastoHoje)} />
         <Numero
@@ -64,6 +68,8 @@ export default function Hoje({ d, irPara }: { d: Dados; irPara: (aba: 'apps' | '
         <Numero rotulo="Receitas no mês" valor={brl(hoje.receitaMes, false)} />
         <Numero rotulo="Saldo nas contas" valor={hoje.saldoContas === null ? '—' : brl(hoje.saldoContas, false)} detalhe="sem cartão de crédito" />
       </div>
+
+      <AchadosCard d={d} max={2} />
 
       {hoje.ultimoGasto && (
         <Cartao>
@@ -138,7 +144,7 @@ export default function Hoje({ d, irPara }: { d: Dados; irPara: (aba: 'apps' | '
             const e = d.snapshots[id];
             return (
               <li key={id} className="flex justify-between gap-3 py-2 text-sm">
-                <span>{appPorId(id).nome}</span>
+                <span>{NOME_FONTE[id]}</span>
                 <span className={`font-mono text-xs ${e ? 'text-[#57534E]' : 'text-[#A8A29E]'}`}>{e ? haQuanto(Date.parse(e.generatedAt)) : 'não vinculado'}</span>
               </li>
             );

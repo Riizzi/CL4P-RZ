@@ -3,6 +3,8 @@ import { Grid2x2, House, MessageSquare, RefreshCw, SlidersHorizontal, Waypoints,
 import { useEffect, useRef, useState } from 'react';
 import { isNative, lerCodigo, setConfig } from './services/config.js';
 import { useDados } from './services/dados.js';
+import { publicarHumor } from './services/humor.js';
+import { sincronizarSaude } from './services/saude.js';
 import Ajustes from './ui/screens/Ajustes.tsx';
 import Apps from './ui/screens/Apps.tsx';
 import Chat from './ui/screens/Chat.tsx';
@@ -71,12 +73,21 @@ export default function App() {
       if (aba !== 'hoje') setAba('hoje');
       else void CapApp.minimizeApp();
     });
-    const r = CapApp.addListener('resume', () => void d.atualizar());
-    return () => {
-      void h.then((x) => x.remove());
-      void r.then((x) => x.remove());
+    return () => void h.then((x) => x.remove());
+  }, [aba]);
+
+  // Ao abrir e ao voltar para o app: lê o relógio (no máximo a cada 30 min) e envia o humor.
+  const { atualizar } = d;
+  useEffect(() => {
+    const aoAbrir = () => {
+      if (isNative) void sincronizarSaude().then(() => atualizar());
+      void publicarHumor();
     };
-  }, [aba, d]);
+    aoAbrir();
+    if (!isNative) return;
+    const r = CapApp.addListener('resume', aoAbrir);
+    return () => void r.then((x) => x.remove());
+  }, [atualizar]);
 
   return (
     <div className="h-full flex flex-col bg-[#FAF7F2]">

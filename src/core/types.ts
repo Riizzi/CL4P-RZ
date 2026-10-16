@@ -6,9 +6,21 @@
  * Datas: ISO 8601 (string) ou epoch em ms quando indicado.
  */
 
-export type AppId = 'retrofin' | 'routinetracker' | 'smartpantry' | 'wishwatch' | 'papertrail' | 'rotmg';
+export type AppId = 'retrofin' | 'routinetracker' | 'smartpantry' | 'wishwatch' | 'papertrail' | 'rotmg' | 'saude' | 'humor';
 
-export const APP_IDS: AppId[] = ['retrofin', 'routinetracker', 'smartpantry', 'wishwatch', 'papertrail', 'rotmg'];
+/** Fontes de dados. As duas últimas são do próprio hub: Health Connect (relógio) e registro de humor. */
+export const APP_IDS: AppId[] = ['retrofin', 'routinetracker', 'smartpantry', 'wishwatch', 'papertrail', 'rotmg', 'saude', 'humor'];
+
+export const NOME_FONTE: Record<AppId, string> = {
+  retrofin: 'RetroFin',
+  routinetracker: 'RoutineTracker',
+  smartpantry: 'SmartPantry',
+  wishwatch: 'WishWatch',
+  papertrail: 'PaperTrail',
+  rotmg: 'RotMG Account Manager',
+  saude: 'Saúde (relógio)',
+  humor: 'Humor',
+};
 
 export interface Envelope<T = unknown> {
   app: AppId;
@@ -173,6 +185,55 @@ export interface RotmgData {
   }[];
 }
 
+// ------------------------------------------------------------------ Saúde (Health Connect, lido pelo APK do hub)
+
+/** Um dia de saúde. O sono pertence ao dia em que a pessoa ACORDOU. */
+export interface SaudeDia {
+  /** YYYY-MM-DD (BH) */
+  dia: string;
+  passos?: number;
+  caloriasAtivas?: number;
+  /** minutos dormindo (sem os acordados) */
+  sonoMin?: number;
+  sonoProfundoMin?: number;
+  sonoRemMin?: number;
+  /** epoch ms de quando dormiu e acordou (sessão principal) */
+  dormiu?: number;
+  acordou?: number;
+  fcRepouso?: number;
+  hrv?: number;
+}
+
+export interface SaudeTreino {
+  inicio: number;
+  fim: number;
+  tipo: string;
+  calorias?: number;
+  distanciaM?: number;
+}
+
+export interface SaudeData {
+  dias: SaudeDia[];
+  treinos: SaudeTreino[];
+}
+
+// ------------------------------------------------------------------ Humor (registrado no hub)
+
+export interface HumorRegistro {
+  id: string;
+  /** epoch ms */
+  ts: number;
+  /** 1 péssimo · 2 ruim · 3 ok · 4 bom · 5 ótimo */
+  nota: 1 | 2 | 3 | 4 | 5;
+  tags?: string[];
+  /** anotação livre: fica no aparelho e no seu banco; não vai para a IA */
+  texto?: string;
+}
+
+export interface HumorData {
+  registros: HumorRegistro[];
+}
+
 export interface DataMap {
   retrofin: RetroFinData;
   routinetracker: RoutineData;
@@ -180,6 +241,8 @@ export interface DataMap {
   wishwatch: WishData;
   papertrail: PaperData;
   rotmg: RotmgData;
+  saude: SaudeData;
+  humor: HumorData;
 }
 
 export type Snapshots = { [K in AppId]?: Envelope<DataMap[K]> };

@@ -2,8 +2,9 @@
  * Monta o contexto que o chatbot recebe: métricas cruzadas + recortes dos dados brutos.
  * Fica abaixo de ~80 mil caracteres para a resposta sair rápida.
  */
+import { montarBemEstar, type Grupo } from './bemestar.js';
 import { DIA, diaLocal, estadias, montarPainel, momentoTransacao, lugarNoMomento, ROTULO_CATEGORIA_LUGAR } from './metrics.js';
-import { APP_IDS, type Snapshots } from './types.js';
+import { APP_IDS, NOME_FONTE, type Snapshots } from './types.js';
 
 const MAX_CHARS = 80_000;
 
@@ -14,6 +15,8 @@ const NOMES: Record<string, string> = {
   wishwatch: 'WishWatch (lista de desejos e preços)',
   papertrail: 'PaperTrail (textos acadêmicos)',
   rotmg: 'RotMG Account Manager (jogo Realm of the Mad God)',
+  saude: 'Saúde (relógio Redmi via Mi Fitness → Health Connect: sono, passos, treinos, batimentos)',
+  humor: 'Humor (registro diário de 1 a 5 no próprio hub)',
 };
 
 const brl = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
@@ -52,7 +55,7 @@ export function montarContexto(s: Snapshots, agora = Date.now(), nivel: NivelDet
   add('FONTES (última atualização recebida):');
   for (const id of APP_IDS) {
     const e = s[id];
-    add(`- ${NOMES[id]}: ${e ? `atualizado em ${hora(Date.parse(e.generatedAt))}` : 'NÃO VINCULADO (sem dados)'}`);
+    add(`- ${NOMES[id] ?? NOME_FONTE[id]}: ${e ? `atualizado em ${hora(Date.parse(e.generatedAt))}` : 'NÃO VINCULADO (sem dados)'}`);
   }
 
   add('');
@@ -116,6 +119,32 @@ export function montarContexto(s: Snapshots, agora = Date.now(), nivel: NivelDet
     for (const c of s.rotmg!.data.contas.slice(0, 5)) {
       add(`- conta ${c.nome}: ${c.personagens.map((x) => `${x.classe}${x.maxados !== undefined ? ` ${x.maxados}/8` : ''}`).join(', ')}; vault ${c.itensNoVault ?? '?'} itens; pets ${c.pets ?? '?'}`);
     }
+  }
+
+  // ---------------------------------------------------------- bem-estar (agregados; sem anotações de humor)
+  const b = montarBemEstar(s, agora);
+  if (b.diasComHumor || b.temSaude) {
+    const g = (x: Grupo) =>
+      `${x.rotulo}: humor ${x.humor ?? '—'} (${x.diasHumor} dias com humor de ${x.dias})${x.sonoH !== null ? `, sono ${x.sonoH} h` : ''}${x.passos !== null ? `, ${x.passos} passos` : ''}${x.gastoImpulso !== null ? `, impulso ${brl(x.gastoImpulso)}/dia` : ''}`;
+    add('');
+    add(`== BEM-ESTAR (60 dias; humor de 1 a 5; ${b.diasComHumor} dias com humor registrado) ==`);
+    if (b.hojeHumor !== null) add(`Humor registrado hoje: ${b.hojeHumor}`);
+    if (b.ultimaNoite?.sonoH) add(`Última noite: ${b.ultimaNoite.sonoH} h de sono`);
+    if (b.achados.length) add(`Achados (cada lado com 3+ dias): ${b.achados.map((a) => a.texto).join(' | ')}`);
+    add('Por tipo de dia da rotina:');
+    for (const x of b.porTipoDia) add(`- ${g(x)}`);
+    add('Por dia da semana:');
+    for (const x of b.porDiaSemana) add(`- ${g(x)}`);
+    if (b.porSono.length) {
+      add('Por sono da noite anterior:');
+      for (const x of b.porSono) add(`- ${g(x)}`);
+    }
+    add('Por humor do dia (gasto total e por impulso):');
+    for (const x of b.porHumor) add(`- ${x.rotulo}: ${x.dias} dias, gasto ${x.gasto !== null ? brl(x.gasto) : '—'}/dia, impulso ${x.gastoImpulso !== null ? brl(x.gastoImpulso) : '—'}/dia`);
+    const t = b.treino;
+    add(`Treino: humor ${t.com.humor ?? '—'} com treino (${t.com.diasHumor} dias) × ${t.sem.humor ?? '—'} sem (${t.sem.diasHumor} dias); sono na noite seguinte ${t.sonoDepoisCom ?? '—'} h × ${t.sonoDepoisSem ?? '—'} h.`);
+    const w = b.semanas;
+    add(`Últimos 7 dias: sono ${w.atual.sonoH ?? '—'} h, ${w.atual.passos ?? '—'} passos/dia, ${w.atual.treinos} treinos, FC repouso ${w.atual.fcRepouso ?? '—'} bpm, humor ${w.atual.humor ?? '—'} (semana anterior: sono ${w.anterior.sonoH ?? '—'} h, ${w.anterior.passos ?? '—'} passos, ${w.anterior.treinos} treinos, FC ${w.anterior.fcRepouso ?? '—'}, humor ${w.anterior.humor ?? '—'})`);
   }
 
   // ---------------------------------------------------------- dados brutos (recortes)
