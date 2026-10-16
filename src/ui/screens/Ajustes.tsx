@@ -5,6 +5,7 @@ import { APPS } from '../../services/apps.js';
 import { apagarSnapshot, saude, type Saude } from '../../services/api.js';
 import { apiBase, gerarCodigoApp, getConfig, isNative, lerCodigo, setConfig } from '../../services/config.js';
 import type { Dados } from '../../services/dados.js';
+import AtualizacaoCard from '../AtualizacaoCard.tsx';
 import { SaudeAjustes } from '../SaudeAjustes.tsx';
 import { Botao, Campo, Cartao, Chave, Rotulo, estiloInput } from '../kit.tsx';
 
@@ -136,6 +137,8 @@ export default function Ajustes({ d }: { d: Dados }) {
       </Cartao>
 
       <SaudeAjustes aoSincronizar={() => void d.atualizar()} />
+
+      {isNative && <AtualizacaoCard repo="Riizzi/CL4P-RZ" apk="CL4P-RZ.apk" />}
 
       <Cartao className="space-y-3">
         <div className="flex items-center justify-between gap-3">

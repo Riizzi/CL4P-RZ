@@ -1,6 +1,8 @@
 import { Clock, MapPin, Receipt, ShoppingBasket, Tag } from 'lucide-react';
 import { ROTULO_CATEGORIA_LUGAR } from '../../core/metrics.js';
 import { APP_IDS, NOME_FONTE } from '../../core/types.js';
+import { useEffect, useState } from 'react';
+import { baixarAtualizacao, verificarSeFazUmDia, type InfoAtualizacao } from '../../services/atualizacao.js';
 import type { Dados } from '../../services/dados.js';
 import { AchadosCard, HumorCard, SaudeHojeCard } from '../BemEstar.tsx';
 import { Aviso, Barra, Cartao, Numero, Rotulo, brl, haQuanto, hhmm } from '../kit.tsx';
@@ -12,9 +14,21 @@ export default function Hoje({ d, irPara }: { d: Dados; irPara: (aba: 'apps' | '
   const horas = Object.entries(hoje.horasHoje).sort((a, b) => b[1] - a[1]);
   const maxHoras = Math.max(1, ...horas.map(([, v]) => v));
   const orc = hoje.orcamentoMes;
+  const [nova, setNova] = useState<InfoAtualizacao | null>(null);
+  useEffect(() => {
+    verificarSeFazUmDia('Riizzi/CL4P-RZ', 'CL4P-RZ.apk').then((i) => i?.temNova && setNova(i)).catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-4">
+      {nova && (
+        <Aviso>
+          <strong>Versão nova disponível</strong> (build {nova.ultima}).{' '}
+          <button className="underline font-bold" onClick={() => baixarAtualizacao(nova)}>
+            Baixar
+          </button>
+        </Aviso>
+      )}
       {d.fonte === 'exemplo' && (
         <Aviso>
           <strong>Dados de exemplo.</strong> Nenhum app enviou dados ainda.{' '}
