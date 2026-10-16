@@ -48,9 +48,16 @@ export function onConfig(f: () => void) {
 
 /** Endereço base efetivo da API. Na Vercel a própria origem serve; no APK é obrigatório configurar. */
 export function apiBase(): string {
-  const c = atual.api.trim().replace(/\/+$/, '');
+  const c = normalizarEndereco(atual.api);
   if (c) return c;
   return isNative ? '' : window.location.origin;
+}
+
+/** "cl4p-rz.vercel.app/ " → "https://cl4p-rz.vercel.app". Vazio continua vazio. */
+export function normalizarEndereco(bruto: string): string {
+  const s = (bruto || '').trim().replace(/\s+/g, '').replace(/\/+$/, '');
+  if (!s) return '';
+  return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 }
 
 // ------------------------------------------------------------------ código de vínculo
@@ -77,7 +84,9 @@ function codificar(u: string, k: string): string {
 
 /** Código de vínculo de um app: "cl4p1.<base64url>" com { u: servidor, k: chave do app }. */
 export async function gerarCodigoApp(app: string, api = apiBase(), token = atual.token): Promise<string> {
-  return codificar(api, await chaveDoApp(app, token));
+  const u = normalizarEndereco(api);
+  if (!u) throw new Error('Preencha o endereço do servidor em Ajustes antes de vincular.');
+  return codificar(u, await chaveDoApp(app, token));
 }
 
 /** Código com a chave PESSOAL: só para configurar outro aparelho com o próprio hub. Nunca cole num app. */

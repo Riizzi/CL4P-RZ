@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { APP_IDS, NOME_FONTE } from '../../core/types.js';
 import { APPS } from '../../services/apps.js';
 import { apagarSnapshot, saude, type Saude } from '../../services/api.js';
-import { apiBase, gerarCodigoApp, getConfig, isNative, lerCodigo, setConfig } from '../../services/config.js';
+import { apiBase, gerarCodigoApp, getConfig, isNative, lerCodigo, normalizarEndereco, setConfig } from '../../services/config.js';
 import type { Dados } from '../../services/dados.js';
 import AtualizacaoCard from '../AtualizacaoCard.tsx';
 import { SaudeAjustes } from '../SaudeAjustes.tsx';
@@ -20,7 +20,9 @@ export default function Ajustes({ d }: { d: Dados }) {
   const [colar, setColar] = useState('');
 
   const salvar = () => {
-    setConfig({ api: api.trim().replace(/\/+$/, ''), token: token.trim(), urls });
+    const a = normalizarEndereco(api);
+    setApi(a);
+    setConfig({ api: a, token: token.trim(), urls });
     setTeste('Salvo.');
   };
 
@@ -39,9 +41,11 @@ export default function Ajustes({ d }: { d: Dados }) {
 
   useEffect(() => {
     const t = c.token;
-    if (!t) return setCodigos({});
+    if (!t || !apiBase()) return setCodigos({});
     let vivo = true;
-    void Promise.all(APPS.map(async (a) => [a.id, await gerarCodigoApp(a.id, apiBase() || c.api, t)] as const)).then((pares) => vivo && setCodigos(Object.fromEntries(pares)));
+    void Promise.all(APPS.map(async (a) => [a.id, await gerarCodigoApp(a.id, apiBase(), t)] as const))
+      .then((pares) => vivo && setCodigos(Object.fromEntries(pares)))
+      .catch(() => vivo && setCodigos({}));
     return () => {
       vivo = false;
     };
@@ -86,6 +90,13 @@ export default function Ajustes({ d }: { d: Dados }) {
         </div>
         {teste && <p className="text-sm text-[#57534E]">{teste}</p>}
       </Cartao>
+
+      {c.token && !apiBase() && (
+        <Cartao className="space-y-1">
+          <Rotulo>Códigos de vínculo</Rotulo>
+          <p className="text-sm text-[#B4413A]">Preencha o endereço do servidor (Vercel) e toque em Salvar. Sem ele os códigos não funcionam.</p>
+        </Cartao>
+      )}
 
       {Object.keys(codigos).length > 0 && (
         <Cartao className="space-y-2">
