@@ -31,6 +31,10 @@ export default function Ajustes({ d }: { d: Dados }) {
     setTeste('Testando…');
     try {
       const s: Saude = await saude();
+      if (s.chave && s.chaveConfere === false) {
+        setTeste('Servidor no ar, mas a chave colada aqui é diferente da CL4P_TOKEN da Vercel. Copie a mesma nos dois lugares (sem espaço nem aspas). Se mudou na Vercel, faça Redeploy.');
+        return;
+      }
       const faltas = [!s.chave && 'CL4P_TOKEN', s.chaveFraca && 'CL4P_TOKEN mais longa (32+ caracteres)', s.banco !== 'upstash' && 'Upstash (usando arquivo local)', !s.gemini && 'GEMINI_API_KEY'].filter(Boolean);
       await d.atualizar();
       setTeste(faltas.length ? `Servidor no ar. Falta configurar: ${faltas.join(', ')}.` : `Tudo certo. Banco Upstash, Gemini ${s.modelo}.`);
