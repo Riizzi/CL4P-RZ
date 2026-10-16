@@ -1,5 +1,5 @@
 import { APP_IDS, type AppId, type Envelope } from '../src/core/types.js';
-import { autorizado, cors, lerCorpo, sendJson } from './_lib/http.js';
+import { autorizadoApp, cors, lerCorpo, sendJson } from './_lib/http.js';
 import { chaveSnapshot } from './_lib/snapshots.js';
 import { set } from './_lib/store.js';
 
@@ -12,11 +12,12 @@ const MAX_BYTES = 3_500_000; // abaixo do limite de 4,5 MB da Vercel
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST.' });
-  if (!autorizado(req, res)) return;
 
   const corpo = (await lerCorpo(req)) as Partial<Envelope>;
   const app = corpo.app as AppId;
   if (!APP_IDS.includes(app)) return sendJson(res, 400, { error: `App desconhecido. Use um de: ${APP_IDS.join(', ')}` });
+  // Cada app só consegue gravar o próprio resumo, e com a chave dele não lê nada.
+  if (!autorizadoApp(req, res, app)) return;
   if (corpo.schema !== 1) return sendJson(res, 400, { error: 'Versão do contrato não suportada (schema deve ser 1).' });
   if (!corpo.data || typeof corpo.data !== 'object') return sendJson(res, 400, { error: 'Campo data ausente.' });
 

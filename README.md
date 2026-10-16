@@ -45,8 +45,16 @@ RotMG ──────────┘                    └──────
 ```
 
 - **CL4P link** (`docs/cl4pLink.ts`): a small module copied into each app. It stores the link code, batches changes for 3 s, only sends when content changed, and retries when the connection comes back.
-- **Link code**: `cl4p1.<base64url>` holding the server URL and key. It arrives via URL (`?cl4p=`), deep link (`retrofin://cl4p?code=`, `routinetracker://cl4p?code=`) or is pasted in the app settings.
+- **Link code**: `cl4p1.<base64url>` holding the server URL and key. It arrives via the URL fragment (`#cl4p=`), deep link (`retrofin://cl4p?code=`, `routinetracker://cl4p?code=`) or is pasted in the app settings.
 - **Contract**: `{ app, schema: 1, generatedAt, data }`, with `data` types in `src/core/types.ts`.
+
+## Privacy
+
+- **Two kinds of keys.** The personal key (`CL4P_TOKEN`) lives only in the hub and is the only one that can read data. Each app gets its own HMAC-derived key that can only **send** that app's summary.
+- **Encrypted at rest.** Summaries are stored in Upstash with AES-256-GCM, keyed from `CL4P_TOKEN`.
+- **Link codes stay out of server logs**: apps are opened with the code in the URL fragment (`#cl4p=`).
+- **Chat.** Gemini's free tier may use prompts to improve Google's models ([terms](https://ai.google.dev/gemini-api/terms)). By default only metrics and per-merchant totals are sent, without coordinates or personal names. The detailed list is opt-in.
+- No secret lives in the repository: keys are Vercel environment variables and GitHub Secrets.
 
 ## Setup (free tiers, no credit card)
 

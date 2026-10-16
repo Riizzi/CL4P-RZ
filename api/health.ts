@@ -9,6 +9,7 @@ export default async function handler(req: any, res: any) {
     app: 'CL4P-RZ',
     ok: true,
     chave: Boolean(process.env.CL4P_TOKEN),
+    chaveFraca: (process.env.CL4P_TOKEN || '').trim().length > 0 && (process.env.CL4P_TOKEN || '').trim().length < 32,
     banco: temBanco ? 'upstash' : 'arquivo-local',
     gemini: temGemini,
     modelo: GEMINI_MODEL,

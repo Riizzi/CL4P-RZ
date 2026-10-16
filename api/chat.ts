@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
   if (!autorizado(req, res)) return;
   if (!temGemini) return sendJson(res, 503, { error: 'Cadastre a variável GEMINI_API_KEY na Vercel para ligar o chat.' });
 
-  const { messages } = (await lerCorpo(req)) as { messages?: Msg[] };
+  const { messages, nivel } = (await lerCorpo(req)) as { messages?: Msg[]; nivel?: string };
   const historico = (Array.isArray(messages) ? messages : [])
     .filter((m) => (m.role === 'user' || m.role === 'model') && typeof m.text === 'string' && m.text.trim())
     .slice(-16)
@@ -24,7 +24,7 @@ export default async function handler(req: any, res: any) {
   if (!historico.length || historico[historico.length - 1].role !== 'user') return sendJson(res, 400, { error: 'Mande uma pergunta.' });
 
   try {
-    const contexto = montarContexto(await carregarSnapshots());
+    const contexto = montarContexto(await carregarSnapshots(), Date.now(), nivel === 'detalhado' ? 'detalhado' : 'resumo');
     const { resposta, model } = await gerar({
       model: GEMINI_MODEL,
       contents: historico,

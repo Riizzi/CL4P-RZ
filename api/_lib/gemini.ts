@@ -5,6 +5,7 @@ export const temGemini = Boolean(process.env.GEMINI_API_KEY);
 
 let cliente: GoogleGenAI | null = null;
 const ai = () => (cliente ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' }));
+export const gerarCliente = ai;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const transitorio = (m: string) => /503|UNAVAILABLE|overloaded|429|RESOURCE_EXHAUSTED|quota|500|INTERNAL/i.test(m);

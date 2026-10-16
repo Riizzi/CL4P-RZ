@@ -27,16 +27,18 @@ const TITULOS: Record<Aba, string> = {
   ajustes: 'Ajustes',
 };
 
-/** Aceita ?cl4p=<código> na URL (mesmo formato que os apps usam) e limpa a barra de endereço. */
+/** Aceita #cl4p=<código> (ou ?cl4p=) na URL (mesmo formato que os apps usam) e limpa a barra de endereço. */
 function capturarCodigoDaUrl() {
   try {
     const u = new URL(window.location.href);
-    const cod = u.searchParams.get('cl4p');
+    const hash = new URLSearchParams(u.hash.replace(/^#/, ''));
+    const cod = hash.get('cl4p') || u.searchParams.get('cl4p');
     if (!cod) return;
     const v = lerCodigo(cod);
     if (v) setConfig({ api: v.u === window.location.origin ? '' : v.u, token: v.k });
     u.searchParams.delete('cl4p');
-    history.replaceState(null, '', u.pathname + u.search + u.hash);
+    hash.delete('cl4p');
+    history.replaceState(null, '', u.pathname + u.search + (hash.toString() ? `#${hash}` : ''));
   } catch {
     /* URL inválida */
   }

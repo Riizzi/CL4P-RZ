@@ -29,6 +29,7 @@ async function chamar<T>(caminho: string, init: RequestInit = {}): Promise<T> {
 export interface Saude {
   ok: boolean;
   chave: boolean;
+  chaveFraca?: boolean;
   banco: string;
   gemini: boolean;
   modelo: string;
@@ -64,5 +65,5 @@ export interface MsgChat {
   text: string;
 }
 
-export const conversar = (messages: MsgChat[]) =>
-  chamar<{ text: string }>('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) });
+export const conversar = (messages: MsgChat[], nivel: 'resumo' | 'detalhado' = 'resumo') =>
+  chamar<{ text: string }>('/api/chat', { method: 'POST', body: JSON.stringify({ messages, nivel }) });

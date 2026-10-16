@@ -1,7 +1,7 @@
 import { AppLauncher } from '@capacitor/app-launcher';
 import { Browser } from '@capacitor/browser';
 import type { AppId } from '../core/types.js';
-import { gerarCodigo, getConfig, isNative } from './config.js';
+import { gerarCodigoApp, getConfig, isNative } from './config.js';
 
 export interface AppInfo {
   id: AppId;
@@ -29,20 +29,25 @@ export function urlDoApp(a: AppInfo): string {
   return (getConfig().urls[a.id] || a.urlPadrao || '').trim();
 }
 
-/** Endereço que abre o app já levando o código de vínculo. */
-export function linkDeAbertura(a: AppInfo, vincular = true): string | null {
-  const cod = getConfig().token ? gerarCodigo() : '';
-  if (a.tipo === 'android') return `${a.esquema}://cl4p${vincular && cod ? `?code=${encodeURIComponent(cod)}` : ''}`;
+/**
+ * Endereço que abre o app já levando o código de vínculo DAQUELE app. Nos apps web o código vai
+ * no fragmento (#cl4p=...), que o navegador não manda para o servidor nem grava em logs.
+ */
+export async function linkDeAbertura(a: AppInfo, vincular = true): Promise<string | null> {
+  const cod = vincular && getConfig().token ? await gerarCodigoApp(a.id) : '';
+  if (a.tipo === 'android') return `${a.esquema}://cl4p${cod ? `?code=${encodeURIComponent(cod)}` : ''}`;
   const url = urlDoApp(a);
   if (!url) return null;
-  if (!vincular || !cod) return url;
+  if (!cod) return url;
   const u = new URL(url);
-  u.searchParams.set('cl4p', cod);
+  const hash = new URLSearchParams(u.hash.replace(/^#/, ''));
+  hash.set('cl4p', cod);
+  u.hash = hash.toString();
   return u.toString();
 }
 
 export async function abrirApp(a: AppInfo, vincular = true): Promise<string | null> {
-  const link = linkDeAbertura(a, vincular);
+  const link = await linkDeAbertura(a, vincular);
   if (!link) return 'Cadastre o endereço deste app em Ajustes.';
   try {
     if (a.tipo === 'android') {

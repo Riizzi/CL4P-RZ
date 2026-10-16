@@ -92,7 +92,7 @@ export default function Chat({ d }: { d: Dados }) {
     setErro(null);
     setPensando(true);
     try {
-      const { text } = await conversar(nova.slice(-16));
+      const { text } = await conversar(nova.slice(-16), getConfig().chatDetalhado ? 'detalhado' : 'resumo');
       setMsgs([...nova, { role: 'model', text }]);
     } catch (e) {
       setErro((e as Error).message);
@@ -110,6 +110,9 @@ export default function Chat({ d }: { d: Dados }) {
             <p className="text-sm leading-relaxed">
               *bip* Unidade CL4P-RZ online! Pergunte qualquer coisa sobre seus gastos, lugares, despensa, desejos, leituras ou o seu exército de personagens no RotMG.
               {d.fonte === 'exemplo' && ' (Por enquanto só tenho dados de exemplo nos circuitos.)'}
+            </p>
+            <p className="text-[11px] text-[#78716C] leading-relaxed">
+              As respostas vêm do Gemini no plano gratuito, em que o Google pode usar as conversas para melhorar os modelos. Por isso vão só totais e métricas, sem nomes de pessoas nem coordenadas{getConfig().chatDetalhado ? ' (a lista de lançamentos está ligada em Ajustes)' : ''}.
             </p>
             <div className="flex flex-wrap gap-2">
               {SUGESTOES.map((s) => (

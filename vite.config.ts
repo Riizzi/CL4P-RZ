@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
 // Em desenvolvimento, as rotas /api rodam dentro do Vite; na Vercel viram funções serverless.
-const rotas = new Set(['/api/health', '/api/ingest', '/api/snapshots', '/api/chat']);
+const rotas = new Set(['/api/health', '/api/ingest', '/api/snapshots', '/api/chat', '/api/retrofin/categorize', '/api/retrofin/insights']);
 
 function apiDev(): Plugin {
   return {

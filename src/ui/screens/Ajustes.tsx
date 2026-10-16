@@ -1,8 +1,8 @@
 import { Check, Copy } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { APPS } from '../../services/apps.js';
 import { apagarSnapshot, saude, type Saude } from '../../services/api.js';
-import { apiBase, gerarCodigo, getConfig, isNative, lerCodigo, setConfig } from '../../services/config.js';
+import { apiBase, gerarCodigoApp, getConfig, isNative, lerCodigo, setConfig } from '../../services/config.js';
 import type { Dados } from '../../services/dados.js';
 import { Botao, Campo, Cartao, Chave, Rotulo, estiloInput } from '../kit.tsx';
 
@@ -12,7 +12,8 @@ export default function Ajustes({ d }: { d: Dados }) {
   const [token, setToken] = useState(c.token);
   const [urls, setUrls] = useState<Record<string, string>>(c.urls);
   const [teste, setTeste] = useState<string | null>(null);
-  const [copiado, setCopiado] = useState(false);
+  const [copiado, setCopiado] = useState<string | null>(null);
+  const [codigos, setCodigos] = useState<Record<string, string>>({});
   const [colar, setColar] = useState('');
 
   const salvar = () => {
@@ -25,7 +26,7 @@ export default function Ajustes({ d }: { d: Dados }) {
     setTeste('Testando…');
     try {
       const s: Saude = await saude();
-      const faltas = [!s.chave && 'CL4P_TOKEN', s.banco !== 'upstash' && 'Upstash (usando arquivo local)', !s.gemini && 'GEMINI_API_KEY'].filter(Boolean);
+      const faltas = [!s.chave && 'CL4P_TOKEN', s.chaveFraca && 'CL4P_TOKEN mais longa (32+ caracteres)', s.banco !== 'upstash' && 'Upstash (usando arquivo local)', !s.gemini && 'GEMINI_API_KEY'].filter(Boolean);
       await d.atualizar();
       setTeste(faltas.length ? `Servidor no ar. Falta configurar: ${faltas.join(', ')}.` : `Tudo certo. Banco Upstash, Gemini ${s.modelo}.`);
     } catch (e) {
@@ -33,7 +34,15 @@ export default function Ajustes({ d }: { d: Dados }) {
     }
   };
 
-  const codigo = token ? gerarCodigo(apiBase() || api, token) : '';
+  useEffect(() => {
+    const t = c.token;
+    if (!t) return setCodigos({});
+    let vivo = true;
+    void Promise.all(APPS.map(async (a) => [a.id, await gerarCodigoApp(a.id, apiBase() || c.api, t)] as const)).then((pares) => vivo && setCodigos(Object.fromEntries(pares)));
+    return () => {
+      vivo = false;
+    };
+  }, [c.token, c.api]);
 
   return (
     <div className="space-y-4">
@@ -75,28 +84,33 @@ export default function Ajustes({ d }: { d: Dados }) {
         {teste && <p className="text-sm text-[#57534E]">{teste}</p>}
       </Cartao>
 
-      {codigo && (
+      {Object.keys(codigos).length > 0 && (
         <Cartao className="space-y-2">
-          <Rotulo>Código de vínculo</Rotulo>
-          <p className="text-xs text-[#78716C] leading-relaxed">Para vincular um app sem abrir pelo hub, cole este código na tela de ajustes dele (seção “Link CL4P-RZ”).</p>
-          <div className="flex gap-2 items-center">
-            <code className="flex-1 min-w-0 truncate text-xs font-mono bg-[#FAF7F2] border border-[#E8DFD1] rounded-lg px-2 py-2.5">{codigo}</code>
-            <button
-              className="w-11 h-11 shrink-0 rounded-xl bg-[#FFFDF9] retro-shadow-sm flex items-center justify-center"
-              aria-label="Copiar código"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(codigo);
-                  setCopiado(true);
-                  setTimeout(() => setCopiado(false), 1500);
-                } catch {
-                  setTeste('Não consegui copiar. Selecione o código e copie à mão.');
-                }
-              }}
-            >
-              {copiado ? <Check className="w-4 h-4 text-[#4E7060]" /> : <Copy className="w-4 h-4" />}
-            </button>
-          </div>
+          <Rotulo>Códigos de vínculo</Rotulo>
+          <p className="text-xs text-[#78716C] leading-relaxed">
+            Cada app tem o próprio código, que só permite enviar os dados daquele app. Abrir pelo hub já vincula; use estes só para colar à mão nos ajustes do app.
+          </p>
+          {APPS.map((a) => (
+            <div key={a.id} className="flex gap-2 items-center">
+              <span className="text-sm w-28 shrink-0 truncate">{a.nome}</span>
+              <code className="flex-1 min-w-0 truncate text-xs font-mono bg-[#FAF7F2] border border-[#E8DFD1] rounded-lg px-2 py-2.5">{codigos[a.id]}</code>
+              <button
+                className="w-11 h-11 shrink-0 rounded-xl bg-[#FFFDF9] retro-shadow-sm flex items-center justify-center"
+                aria-label={`Copiar código do ${a.nome}`}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(codigos[a.id]);
+                    setCopiado(a.id);
+                    setTimeout(() => setCopiado(null), 1500);
+                  } catch {
+                    setTeste('Não consegui copiar. Selecione o código e copie à mão.');
+                  }
+                }}
+              >
+                {copiado === a.id ? <Check className="w-4 h-4 text-[#4E7060]" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          ))}
         </Cartao>
       )}
 
@@ -117,6 +131,16 @@ export default function Ajustes({ d }: { d: Dados }) {
           </Campo>
         ))}
         <p className="text-[11px] text-[#78716C]">RetroFin e RoutineTracker abrem como apps instalados no Android.</p>
+      </Cartao>
+
+      <Cartao className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-bold text-sm">Lançamentos detalhados no chat</p>
+            <p className="text-xs text-[#78716C]">Manda a lista de compras e de estadias para o Gemini. Desligado, vão só totais. O plano gratuito do Gemini pode usar os dados para treinar.</p>
+          </div>
+          <Chave ligada={c.chatDetalhado} onChange={(v) => setConfig({ chatDetalhado: v })} rotulo="Lançamentos detalhados no chat" />
+        </div>
       </Cartao>
 
       <Cartao className="space-y-3">

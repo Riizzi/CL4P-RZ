@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { chaveDoApp, iguais } from './cripto.js';
 
 /** CORS aberto: a proteção é a chave (Bearer), não a origem. Os apps rodam em domínios diferentes e no Capacitor. */
 export function cors(req: any, res: any): boolean {
@@ -21,26 +21,33 @@ export function sendJson(res: any, status: number, data: unknown) {
   res.end(JSON.stringify(data));
 }
 
-function iguais(a: string, b: string): boolean {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
+function tokenDoPedido(req: any): string {
+  const h: string = req.headers?.authorization || req.headers?.Authorization || '';
+  return h.startsWith('Bearer ') ? h.slice(7).trim() : '';
 }
 
-/** Confere a chave pessoal (variável CL4P_TOKEN). Responde o erro e retorna false se não bater. */
-export function autorizado(req: any, res: any): boolean {
-  const esperado = (process.env.CL4P_TOKEN || '').trim();
-  if (!esperado) {
-    sendJson(res, 503, { error: 'Servidor sem chave configurada. Cadastre a variável CL4P_TOKEN na Vercel.' });
-    return false;
-  }
-  const h: string = req.headers?.authorization || req.headers?.Authorization || '';
-  const token = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
-  if (!token || !iguais(token, esperado)) {
-    sendJson(res, 401, { error: 'Chave inválida.' });
-    return false;
-  }
+function semChaveNoServidor(res: any): boolean {
+  if ((process.env.CL4P_TOKEN || '').trim()) return false;
+  sendJson(res, 503, { error: 'Servidor sem chave configurada. Cadastre a variável CL4P_TOKEN na Vercel.' });
   return true;
+}
+
+/** Só a chave pessoal (leitura dos dados, chat, apagar). */
+export function autorizado(req: any, res: any): boolean {
+  if (semChaveNoServidor(res)) return false;
+  const token = tokenDoPedido(req);
+  if (token && iguais(token, (process.env.CL4P_TOKEN || '').trim())) return true;
+  sendJson(res, 401, { error: 'Chave inválida.' });
+  return false;
+}
+
+/** Chave pessoal ou a chave daquele app (que só serve para as rotas do próprio app). */
+export function autorizadoApp(req: any, res: any, app: string): boolean {
+  if (semChaveNoServidor(res)) return false;
+  const token = tokenDoPedido(req);
+  if (token && (iguais(token, chaveDoApp(app)) || iguais(token, (process.env.CL4P_TOKEN || '').trim()))) return true;
+  sendJson(res, 401, { error: 'Chave inválida para este app.' });
+  return false;
 }
 
 /** Corpo JSON: a Vercel já entrega em req.body; no servidor de desenvolvimento lemos o stream. */

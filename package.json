@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite --host --port 3000",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/core/*.test.ts",
+    "test": "tsx --test src/core/*.test.ts api/_lib/*.test.ts",
     "build": "tsc --noEmit && vite build",
     "sync": "npm run build && cap sync android",
     "icons": "node scripts/make-icons.mjs"
