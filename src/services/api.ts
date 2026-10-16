@@ -30,6 +30,8 @@ export interface Saude {
   ok: boolean;
   chave: boolean;
   chaveFraca?: boolean;
+  /** a chave colada no hub é igual à CL4P_TOKEN da Vercel */
+  chaveConfere?: boolean | null;
   banco: string;
   gemini: boolean;
   modelo: string;
