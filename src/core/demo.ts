@@ -1,6 +1,6 @@
 /** Dados de exemplo (determinísticos) para ver o hub funcionando antes de vincular os apps. */
 import { DIA, diaLocal, inicioDoDia } from './metrics.js';
-import type { FinTransacao, RotinaRegistro, Snapshots } from './types.js';
+import type { FinTransacao, HumorRegistro, RotinaRegistro, SaudeDia, SaudeTreino, Snapshots } from './types.js';
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -45,10 +45,40 @@ export function snapshotsDemo(agora = Date.now()): Snapshots {
   };
 
   const hoje0 = inicioDoDia(agora);
+  // Saúde e humor de exemplo (sorteio separado para não mexer no resto)
+  const r2 = rng(7);
+  const diasSaude: SaudeDia[] = [];
+  const treinos: SaudeTreino[] = [];
+  const humores: HumorRegistro[] = [];
+  let treinouOntem = false;
   for (let i = 60; i >= 0; i--) {
     const d0 = hoje0 - i * DIA;
     const dow = new Date(d0 - 3 * H + 12 * H).getUTCDay();
     const util = dow >= 1 && dow <= 5;
+    const treino = util && dow % 2 === 1;
+    let sonoH = 7.1 + (r2() - 0.5) * 1.6 - (dow === 1 ? 0.6 : 0) + (treinouOntem ? 0.4 : 0) - (r2() < 0.15 ? 1.4 : 0);
+    sonoH = Math.round(Math.max(4.5, sonoH) * 10) / 10;
+    const acordou = d0 + (util ? 6.6 : 9) * H;
+    if (acordou <= agora) {
+      diasSaude.push({
+        dia: diaLocal(d0 + 12 * H),
+        sonoMin: Math.round(sonoH * 60),
+        sonoProfundoMin: Math.round(sonoH * 60 * 0.18),
+        dormiu: acordou - sonoH * H - 15 * 60_000,
+        acordou,
+        passos: Math.round((util ? 6000 + r2() * 3000 : 4000 + r2() * 6000) + (treino ? 2500 : 0)),
+        fcRepouso: Math.round(58 + r2() * 5),
+      });
+    }
+    if (treino && d0 + 19.3 * H <= agora) treinos.push({ inicio: d0 + 18.3 * H, fim: d0 + 19.3 * H, tipo: 'strengthTraining', calorias: Math.round(280 + r2() * 120) });
+    const nota = Math.min(5, Math.max(1, Math.round(3 + (treino ? 0.8 : 0) + (sonoH < 6 ? -1.1 : sonoH >= 7.5 ? 0.4 : 0) + (!util ? 0.4 : 0) + (r2() - 0.5) * 1.2))) as HumorRegistro['nota'];
+    if (d0 + 21.5 * H <= agora && r2() < 0.85) {
+      humores.push({ id: `h${i}`, ts: d0 + 21.5 * H, nota, tags: nota <= 2 ? ['Cansado'] : nota >= 4 ? ['Disposto'] : [] });
+      if (nota <= 2 && d0 + 21 * H <= agora) {
+        transactions.push({ id: `t${n++}`, date: diaLocal(d0 + 12 * H), time: '21:00', createdAt: new Date(d0 + 21 * H).toISOString(), description: 'iFood', amount: -Math.round((45 + r2() * 30) * 100) / 100, category: 'Alimentação & Mercado', source: 'notificacao' });
+      }
+    }
+    treinouOntem = treino;
     if (util) {
       reg('casa', d0 - 3 * H, d0 + 7.5 * H);
       reg('cidade-adm', d0 + 8.3 * H, d0 + 17.4 * H);
@@ -150,6 +180,8 @@ export function snapshotsDemo(agora = Date.now()): Snapshots {
         ],
       },
     },
+    saude: { app: 'saude', schema: 1, generatedAt: gen, data: { dias: diasSaude, treinos } },
+    humor: { app: 'humor', schema: 1, generatedAt: gen, data: { registros: humores } },
     rotmg: {
       app: 'rotmg',
       schema: 1,

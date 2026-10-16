@@ -67,3 +67,7 @@ export interface MsgChat {
 
 export const conversar = (messages: MsgChat[], nivel: 'resumo' | 'detalhado' = 'resumo') =>
   chamar<{ text: string }>('/api/chat', { method: 'POST', body: JSON.stringify({ messages, nivel }) });
+
+/** O próprio hub publica as fontes dele (saúde e humor) com a chave pessoal. */
+export const enviarSnapshot = (app: 'saude' | 'humor', data: unknown) =>
+  chamar<{ ok: true }>('/api/ingest', { method: 'POST', body: JSON.stringify({ app, schema: 1, generatedAt: new Date().toISOString(), data }) });

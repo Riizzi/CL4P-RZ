@@ -40,3 +40,13 @@ test('contexto do chat não leva coordenadas nem nomes de pessoas; resumo não l
   assert.ok(!resumo.includes('TRANSAÇÕES DOS ÚLTIMOS 60 DIAS'));
   assert.ok(det.includes('TRANSAÇÕES DOS ÚLTIMOS 60 DIAS'));
 });
+
+test('anotação do humor nunca vai para o contexto do chat', () => {
+  const s = snapshotsDemo(Date.parse('2026-10-16T15:00:00Z'));
+  s.humor!.data.registros.push({ id: 'x', ts: Date.parse('2026-10-16T12:00:00Z'), nota: 2, texto: 'briguei com fulano no trabalho' });
+  for (const nivel of ['resumo', 'detalhado'] as const) {
+    const t = montarContexto(s, Date.parse('2026-10-16T15:00:00Z'), nivel);
+    assert.ok(!t.includes('briguei'), nivel);
+    assert.ok(t.includes('BEM-ESTAR'));
+  }
+});

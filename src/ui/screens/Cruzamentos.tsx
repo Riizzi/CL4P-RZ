@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { Dados } from '../../services/dados.js';
+import { BemEstarSecoes } from '../BemEstar.tsx';
 import { Barra, Cartao, Numero, brl, dataCurta } from '../kit.tsx';
 
 const AZUL = '#3F6FA8';
@@ -25,14 +26,49 @@ function SemDados({ texto }: { texto: string }) {
 }
 
 export default function Cruzamentos({ d }: { d: Dados }) {
-  const p = d.painel;
   const [porTipo, setPorTipo] = useState(false);
+  const [visao, setVisao] = useState<'bemestar' | 'dinheiro'>(() => {
+    try {
+      return (sessionStorage.getItem('cl4p.cruzar') as 'bemestar' | 'dinheiro') || 'bemestar';
+    } catch {
+      return 'bemestar';
+    }
+  });
+  const escolher = (v: 'bemestar' | 'dinheiro') => {
+    setVisao(v);
+    try {
+      sessionStorage.setItem('cl4p.cruzar', v);
+    } catch {
+      /* ignora */
+    }
+  };
+  const seletor = (
+    <div className="flex bg-[#F3EDE3] rounded-xl p-1 text-xs font-bold sticky top-0 z-10" role="tablist">
+      {[
+        ['bemestar', 'Bem-estar'],
+        ['dinheiro', 'Dinheiro e rotina'],
+      ].map(([v, r]) => (
+        <button key={v} role="tab" aria-selected={visao === v} onClick={() => escolher(v as 'bemestar' | 'dinheiro')} className={`flex-1 min-h-10 rounded-lg ${visao === v ? 'bg-[#FFFDF9] retro-shadow-sm text-[#292524]' : 'text-[#78716C]'}`}>
+          {r}
+        </button>
+      ))}
+    </div>
+  );
+  if (visao === 'bemestar')
+    return (
+      <div className="space-y-5">
+        {seletor}
+        <BemEstarSecoes d={d} />
+      </div>
+    );
+  const p = d.painel;
   const g = p.gastoPorLugar30d;
   const linhas = porTipo ? g.porCategoria.map((c) => ({ chave: c.categoria, nome: c.rotulo, total: c.total, sub: `${c.qtd} compras` })) : g.linhas.slice(0, 10).map((l) => ({ chave: l.chave, nome: l.nome, total: l.total, sub: `${l.qtd} compras · ticket ${brl(l.ticketMedio)} · ${l.principais.map((x) => x.descricao).join(', ')}` }));
   const maxG = Math.max(1, ...linhas.map((l) => l.total));
 
   return (
     <div className="space-y-5">
+      {seletor}
       <Secao titulo="Quanto você gasta em cada lugar" fontes="RetroFin × RoutineTracker · 30 dias">
         {g.totalAnalisado === 0 ? (
           <SemDados texto="Precisa de transações no RetroFin e estadias no RoutineTracker." />

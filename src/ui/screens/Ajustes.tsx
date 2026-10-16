@@ -1,9 +1,12 @@
 import { Check, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { APP_IDS, NOME_FONTE } from '../../core/types.js';
 import { APPS } from '../../services/apps.js';
 import { apagarSnapshot, saude, type Saude } from '../../services/api.js';
 import { apiBase, gerarCodigoApp, getConfig, isNative, lerCodigo, setConfig } from '../../services/config.js';
 import type { Dados } from '../../services/dados.js';
+import AtualizacaoCard from '../AtualizacaoCard.tsx';
+import { SaudeAjustes } from '../SaudeAjustes.tsx';
 import { Botao, Campo, Cartao, Chave, Rotulo, estiloInput } from '../kit.tsx';
 
 export default function Ajustes({ d }: { d: Dados }) {
@@ -133,6 +136,10 @@ export default function Ajustes({ d }: { d: Dados }) {
         <p className="text-[11px] text-[#78716C]">RetroFin e RoutineTracker abrem como apps instalados no Android.</p>
       </Cartao>
 
+      <SaudeAjustes aoSincronizar={() => void d.atualizar()} />
+
+      {isNative && <AtualizacaoCard repo="Riizzi/CL4P-RZ" apk="CL4P-RZ.apk" />}
+
       <Cartao className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -157,7 +164,7 @@ export default function Ajustes({ d }: { d: Dados }) {
         <Cartao className="space-y-2">
           <Rotulo>Apagar dados recebidos</Rotulo>
           <p className="text-xs text-[#78716C]">Remove do servidor o último resumo enviado por um app. O app volta a enviar na próxima alteração.</p>
-          {APPS.filter((a) => d.snapshots[a.id]).map((a) => (
+          {APP_IDS.filter((id) => d.snapshots[id]).map((id) => ({ id, nome: NOME_FONTE[id] })).map((a) => (
             <div key={a.id} className="flex items-center justify-between gap-3">
               <span className="text-sm">{a.nome}</span>
               <Botao
