@@ -53,14 +53,22 @@ RotMG ──────────┘                    └──────
 ```
 
 - **Link CL4P** (`docs/cl4pLink.ts`): módulo pequeno, copiado em cada app. Guarda o código de vínculo, junta as alterações por 3 s, só envia quando o conteúdo mudou e tenta de novo quando a internet volta.
-- **Código de vínculo**: `cl4p1.<base64url>` com o endereço do servidor e a chave. Chega pela URL (`?cl4p=`), por deep link (`retrofin://cl4p?code=`, `routinetracker://cl4p?code=`) ou colado nos ajustes do app.
+- **Código de vínculo**: `cl4p1.<base64url>` com o endereço do servidor e a chave. Chega pelo fragmento da URL (`#cl4p=`), por deep link (`retrofin://cl4p?code=`, `routinetracker://cl4p?code=`) ou colado nos ajustes do app.
 - **Contrato**: `{ app, schema: 1, generatedAt, data }`, com os tipos de `data` em `src/core/types.ts`.
-- **Privacidade**: uma chave pessoal protege tudo. Os apps enviam resumos: nada de anexo, texto de notificação ou senha.
+
+## Privacidade
+
+- **Duas chaves.** A chave pessoal (`CL4P_TOKEN`) fica só no hub e é a única que lê os dados. Cada app recebe uma chave própria, derivada da pessoal por HMAC, que só consegue **enviar** o resumo daquele app. Se alguém pegar o celular e extrair a chave do SmartPantry, por exemplo, não lê nada.
+- **Dados cifrados no banco.** O Upstash guarda cada resumo cifrado com AES-256-GCM, com chave derivada da `CL4P_TOKEN`. Um vazamento do banco sozinho não expõe nada.
+- **Código fora dos logs.** O hub abre os apps com o código no fragmento da URL (`#cl4p=`), que o navegador não manda ao servidor.
+- **Chat.** O Gemini gratuito pode usar as conversas para melhorar os modelos ([termos](https://ai.google.dev/gemini-api/terms)). Por padrão vão só métricas e totais por estabelecimento, sem coordenadas, sem nomes de pessoas e sem a lista de lançamentos. A lista detalhada é opcional, em Ajustes.
+- **Repositório público.** O código pode ser público: nenhum segredo fica no repositório. As chaves vivem nas variáveis da Vercel e nos Secrets do GitHub. A `CL4P_TOKEN` precisa ter 32 caracteres ou mais (o teste de conexão avisa se for curta).
+- Trocar a `CL4P_TOKEN` invalida as chaves dos apps e os dados guardados. Depois da troca, é só abrir cada app pelo hub de novo.
 
 ## Configuração (gratuita, sem cartão)
 
 1. **Upstash**: crie um banco Redis em [console.upstash.com](https://console.upstash.com) e copie `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` (aba REST API).
-2. **Chave pessoal**: invente um texto longo e aleatório. Ele será o `CL4P_TOKEN`.
+2. **Chave pessoal**: um texto aleatório de 32 caracteres ou mais (ex.: gerador de senhas). Ele será o `CL4P_TOKEN`.
 3. **Gemini**: gere a chave em [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 4. **Vercel**: importe este repositório, cadastre as variáveis do `.env.example` e publique.
 5. Abra o site publicado, vá em **Ajustes**, cole a chave e toque em **Testar conexão**.
@@ -68,7 +76,7 @@ RotMG ──────────┘                    └──────
 
 ### APK
 
-O workflow **Build APK** gera o `CL4P-RZ.apk` a cada push na `main` e publica em **Releases**. No APK, informe em **Ajustes** o endereço da Vercel e a chave (ou cole o código de vínculo que aparece no site).
+O workflow **Build APK** gera o `CL4P-RZ.apk` a cada push na `main` e publica em **Releases**. A assinatura vem dos Secrets `ANDROID_KEYSTORE_BASE64` e `ANDROID_KEYSTORE_PASSWORD`; sem eles, o build usa uma chave temporária e não publica. No APK, informe em **Ajustes** o endereço da Vercel e a chave (ou cole o código de vínculo que aparece no site).
 
 ## Desenvolvimento
 

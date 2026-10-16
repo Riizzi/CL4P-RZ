@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CL4P-RZ</string>
+    <string name="title_activity_main">CL4P-RZ</string>
+    <string name="package_name">app.cl4prz</string>
+    <string name="custom_url_scheme">app.cl4prz</string>
+</resources>
