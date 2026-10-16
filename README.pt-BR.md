@@ -29,6 +29,8 @@ Hub pessoal que junta os dados dos meus apps, cruza tudo e responde perguntas so
 | **Quando o dinheiro sai** | RetroFin | Mapa de calor por dia da semana e faixa de horário. |
 | **RotMG** | RotMG Account Manager | Personagens 8/8, mortes e classe que mais morreu. |
 | **Humor por tipo de dia** | Humor × RoutineTracker × relógio | Cada dia vira um tipo pela rotina (trabalho, treino, UFMG, folga em casa ou com saída) e mostra o humor médio de cada tipo, com quantos dias há por trás. |
+| **Agenda cheia ou livre** | Agenda × Humor × relógio × RetroFin | Humor, sono e gasto por impulso nos dias livres contra os de 3 ou mais compromissos; sono antes de compromisso cedo. |
+| **Clima** | Clima × Humor × relógio × RetroFin | Humor, passos e gasto por impulso em dias de chuva, de calor e secos. |
 | **Sono, treino e humor** | Relógio (Health Connect) × Humor × RetroFin | Humor e gasto por impulso por faixa de sono da noite anterior; sono depois de dia com treino; gasto nos dias bons e ruins. |
 
 Os cruzamentos são funções puras em `src/core/metrics.ts`, cobertas por testes, e as mesmas funções alimentam a tela e o chat.
@@ -38,6 +40,13 @@ Os cruzamentos são funções puras em `src/core/metrics.ts`, cobertas por teste
 - **Relógio:** o APK lê do Health Connect o que o Mi Fitness escreve lá: sono, passos, calorias, batimentos em repouso, HRV e treinos. Só leitura. O sono conta no dia em que você acordou.
 - **Humor:** registro de 1 a 5 na tela Hoje, com etiquetas e anotação opcionais e um lembrete diário opcional. A anotação não vai para a IA.
 - Um achado só aparece quando cada lado tem pelo menos 3 dias. É correlação, não causa.
+
+## Agenda e clima
+
+O servidor do hub busca as duas fontes sozinho, a cada 30 minutos enquanto você usa o app:
+
+- **Agenda:** um ou mais links iCal secretos (Google Agenda → Configurações → Integrar agenda → *Endereço secreto no formato iCal*). Eventos repetidos são expandidos; os de dia inteiro e os marcados como "disponível" não contam como compromisso. Os links ficam cifrados no banco e nunca voltam para o aparelho.
+- **Clima:** dados diários do [Open-Meteo](https://open-meteo.com) (gratuito, sem chave), dos últimos 92 dias e dos próximos 7, para a cidade definida em Ajustes.
 
 ## Telas
 

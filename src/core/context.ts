@@ -17,6 +17,8 @@ const NOMES: Record<string, string> = {
   rotmg: 'RotMG Account Manager (jogo Realm of the Mad God)',
   saude: 'Saúde (relógio Redmi via Mi Fitness → Health Connect: sono, passos, treinos, batimentos)',
   humor: 'Humor (registro diário de 1 a 5 no próprio hub)',
+  agenda: 'Agenda (Google Agenda pelo link iCal)',
+  clima: 'Clima (Open-Meteo, dia a dia)',
 };
 
 const brl = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
@@ -145,6 +147,44 @@ export function montarContexto(s: Snapshots, agora = Date.now(), nivel: NivelDet
     add(`Treino: humor ${t.com.humor ?? '—'} com treino (${t.com.diasHumor} dias) × ${t.sem.humor ?? '—'} sem (${t.sem.diasHumor} dias); sono na noite seguinte ${t.sonoDepoisCom ?? '—'} h × ${t.sonoDepoisSem ?? '—'} h.`);
     const w = b.semanas;
     add(`Últimos 7 dias: sono ${w.atual.sonoH ?? '—'} h, ${w.atual.passos ?? '—'} passos/dia, ${w.atual.treinos} treinos, FC repouso ${w.atual.fcRepouso ?? '—'} bpm, humor ${w.atual.humor ?? '—'} (semana anterior: sono ${w.anterior.sonoH ?? '—'} h, ${w.anterior.passos ?? '—'} passos, ${w.anterior.treinos} treinos, FC ${w.anterior.fcRepouso ?? '—'}, humor ${w.anterior.humor ?? '—'})`);
+  }
+
+  const ag = s.agenda?.data;
+  if (ag) {
+    add('');
+    add(`== AGENDA (próximos 7 dias${nivel === 'detalhado' ? ', com títulos' : '; títulos ocultos no modo resumo'}) ==`);
+    for (let i = 0; i < 7; i++) {
+      const dia = diaLocal(agora + i * DIA);
+      const evs = ag.eventos.filter((e) => diaLocal(e.inicio) === dia && !e.livre);
+      if (!evs.length) {
+        add(`- ${dia}: livre`);
+        continue;
+      }
+      const comHora = evs.filter((e) => !e.diaInteiro);
+      const horas = comHora.reduce((m, e) => m + (e.fim - e.inicio) / 3_600_000, 0);
+      const desc =
+        nivel === 'detalhado'
+          ? evs.map((e) => `${e.diaInteiro ? 'dia inteiro' : hora(e.inicio).slice(11)} ${e.titulo}`).join('; ')
+          : `${comHora.length} compromissos (${horas.toFixed(1)} h)${comHora[0] ? `, o primeiro às ${hora(comHora[0].inicio).slice(11)}` : ''}${evs.length > comHora.length ? ` + ${evs.length - comHora.length} de dia inteiro` : ''}`;
+      add(`- ${dia}: ${desc}`);
+    }
+    const b = montarBemEstar(s, agora);
+    add('Agenda × bem-estar (60 dias):');
+    for (const x of b.porAgenda) add(`- ${x.rotulo}: ${x.dias} dias, humor ${x.humor ?? '—'}, sono ${x.sonoH ?? '—'} h, impulso ${x.gastoImpulso !== null ? brl(x.gastoImpulso) : '—'}/dia`);
+    for (const x of b.porCompromissoCedo) add(`- ${x.rotulo}: sono na noite anterior ${x.sonoH ?? '—'} h (${x.dias} dias)`);
+  }
+
+  const cl = s.clima?.data;
+  if (cl) {
+    add('');
+    add(`== CLIMA (${cl.local}) ==`);
+    const hojeStr = diaLocal(agora);
+    for (const c of cl.dias.filter((c) => c.dia >= diaLocal(agora - 3 * DIA)).slice(0, 10)) {
+      add(`- ${c.dia}${c.dia === hojeStr ? ' (hoje)' : c.dia > hojeStr ? ' (previsão)' : ''}: máx ${c.tMax} °C, mín ${c.tMin} °C, chuva ${c.chuvaMm} mm`);
+    }
+    const b = montarBemEstar(s, agora);
+    add('Clima × bem-estar (60 dias):');
+    for (const x of b.porClima) add(`- ${x.rotulo}: ${x.dias} dias, humor ${x.humor ?? '—'}, passos ${x.passos ?? '—'}, impulso ${x.gastoImpulso !== null ? brl(x.gastoImpulso) : '—'}/dia`);
   }
 
   // ---------------------------------------------------------- dados brutos (recortes)

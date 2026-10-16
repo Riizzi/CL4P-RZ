@@ -28,6 +28,8 @@ Personal hub that pulls data from my own apps, cross-references it, and answers 
 | **Study × reading** | RoutineTracker × PaperTrail | Weekly hours at study places vs. texts added and read. |
 | **When money goes out** | RetroFin | Heatmap by weekday and time of day. |
 | **RotMG** | RotMG Account Manager | Maxed characters, deaths, deadliest class. |
+| **Calendar load** | Calendar × Mood × watch × RetroFin | Mood, sleep and impulse spending on free days vs. busy days (3+ meetings); sleep before early meetings. |
+| **Weather** | Weather × Mood × watch × RetroFin | Mood, steps and impulse spending on rainy, hot and dry days. |
 
 All insights are pure, tested functions in `src/core/metrics.ts`, shared by the UI and the chat.
 
@@ -48,7 +50,13 @@ RotMG ──────────┘                    └──────
 - **Link code**: `cl4p1.<base64url>` holding the server URL and key. It arrives via the URL fragment (`#cl4p=`), deep link (`retrofin://cl4p?code=`, `routinetracker://cl4p?code=`) or is pasted in the app settings.
 - **Contract**: `{ app, schema: 1, generatedAt, data }`, with `data` types in `src/core/types.ts`.
 
-## Privacy
+## Calendar and weather
+
+The hub's server fetches two sources itself, every 30 minutes while the app is in use:
+
+- **Calendar:** one or more private iCal links (Google Calendar → Settings → Integrate calendar → *Secret address in iCal format*). Recurring events are expanded; all-day and "free" events don't count as meetings. The links are stored encrypted and never sent back to the device.
+- **Weather:** [Open-Meteo](https://open-meteo.com) daily data (free, no key) for the last 92 days and the next 7, for the city set in Settings.
+
 
 - **Two kinds of keys.** The personal key (`CL4P_TOKEN`) lives only in the hub and is the only one that can read data. Each app gets its own HMAC-derived key that can only **send** that app's summary.
 - **Encrypted at rest.** Summaries are stored in Upstash with AES-256-GCM, keyed from `CL4P_TOKEN`.

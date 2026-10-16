@@ -1,6 +1,6 @@
 /** Dados de exemplo (determinísticos) para ver o hub funcionando antes de vincular os apps. */
 import { DIA, diaLocal, inicioDoDia } from './metrics.js';
-import type { FinTransacao, HumorRegistro, RotinaRegistro, SaudeDia, SaudeTreino, Snapshots } from './types.js';
+import type { AgendaEvento, ClimaDia, FinTransacao, HumorRegistro, RotinaRegistro, SaudeDia, SaudeTreino, Snapshots } from './types.js';
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -117,6 +117,28 @@ export function snapshotsDemo(agora = Date.now()): Snapshots {
   const aberto = regs.filter((x) => x.fim === null);
   aberto.slice(0, -1).forEach((x) => (x.fim = x.inicio + H));
 
+  // Agenda e clima de exemplo (outro sorteio, idem)
+  const r3 = rng(11);
+  const eventos: AgendaEvento[] = [];
+  const diasClima: ClimaDia[] = [];
+  for (let i = 60; i >= -7; i--) {
+    const d0 = hoje0 - i * DIA;
+    const dow = new Date(d0 + 9 * H).getUTCDay();
+    if (dow >= 1 && dow <= 5) {
+      if (dow === 1) eventos.push({ inicio: d0 + 8 * H, fim: d0 + 9 * H, diaInteiro: false, titulo: 'Reunião GT Dados', calendario: 'Trabalho' });
+      const extras = Math.floor(r3() * 4);
+      for (let k = 0; k < extras; k++) {
+        const h = 9.5 + Math.floor(r3() * 7);
+        eventos.push({ inicio: d0 + h * H, fim: d0 + (h + 1) * H, diaInteiro: false, titulo: ['Alinhamento COP31', 'Painel PROINVESTE', 'Reunião com a Superintendência', 'Orientação TCC'][k % 4], calendario: 'Trabalho' });
+      }
+    } else if (r3() < 0.3) {
+      eventos.push({ inicio: d0 + 13 * H, fim: d0 + 16 * H, diaInteiro: false, titulo: 'Almoço em família', calendario: 'Pessoal' });
+    }
+    const chuva = r3() < 0.3 ? Math.round((2 + r3() * 25) * 10) / 10 : 0;
+    const tMax = Math.round((chuva ? 23 + r3() * 4 : 26 + r3() * 6) * 10) / 10;
+    diasClima.push({ dia: diaLocal(d0 + 12 * H), tMax, tMin: Math.round((tMax - 9 - r3() * 2) * 10) / 10, chuvaMm: chuva, codigo: chuva ? (chuva > 10 ? 65 : 61) : tMax > 29 ? 0 : 2 });
+  }
+
   const iso = (t: number) => new Date(t).toISOString();
   const gen = iso(agora);
   return {
@@ -182,6 +204,8 @@ export function snapshotsDemo(agora = Date.now()): Snapshots {
     },
     saude: { app: 'saude', schema: 1, generatedAt: gen, data: { dias: diasSaude, treinos } },
     humor: { app: 'humor', schema: 1, generatedAt: gen, data: { registros: humores } },
+    agenda: { app: 'agenda', schema: 1, generatedAt: gen, data: { eventos, desde: hoje0 - 60 * DIA, ate: hoje0 + 8 * DIA, calendarios: ['Trabalho', 'Pessoal'] } },
+    clima: { app: 'clima', schema: 1, generatedAt: gen, data: { local: 'Belo Horizonte', lat: -19.92, lon: -43.94, dias: diasClima } },
     rotmg: {
       app: 'rotmg',
       schema: 1,

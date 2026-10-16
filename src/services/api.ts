@@ -73,3 +73,22 @@ export const conversar = (messages: MsgChat[], nivel: 'resumo' | 'detalhado' = '
 /** O próprio hub publica as fontes dele (saúde e humor) com a chave pessoal. */
 export const enviarSnapshot = (app: 'saude' | 'humor', data: unknown) =>
   chamar<{ ok: true }>('/api/ingest', { method: 'POST', body: JSON.stringify({ app, schema: 1, generatedAt: new Date().toISOString(), data }) });
+
+// ------------------------------------------------------------------ agenda e clima (o servidor busca)
+
+export interface LeituraExterna {
+  em: number | null;
+  erro: string | null;
+  itens?: number;
+}
+export interface Externos {
+  agendas: { nome: string; host: string }[];
+  local: { nome: string; lat: number; lon: number };
+  status: { agenda: LeituraExterna; clima: LeituraExterna };
+}
+
+/** atualizar: 0 só lê a situação, 1 lê de novo se passou de 30 min, 2 lê de novo agora. */
+export const externos = (atualizar: 0 | 1 | 2 = 0) => chamar<Externos>(`/api/externos${atualizar ? `?atualizar=${atualizar}` : ''}`);
+
+export const configurarExternos = (corpo: { adicionar?: { nome: string; url: string }; remover?: number; cidade?: string }) =>
+  chamar<Externos>('/api/externos', { method: 'POST', body: JSON.stringify(corpo) });

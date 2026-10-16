@@ -3,7 +3,7 @@ import { snapshotsDemo } from '../core/demo.js';
 import { montarBemEstar, type BemEstar } from '../core/bemestar.js';
 import { montarPainel, type Painel } from '../core/metrics.js';
 import { APP_IDS, type Snapshots } from '../core/types.js';
-import { buscarSnapshots, snapshotsEmCache } from './api.js';
+import { buscarSnapshots, externos, snapshotsEmCache } from './api.js';
 import { getConfig, onConfig } from './config.js';
 import { mesclarDoServidor, useHumor } from './humor.js';
 
@@ -39,6 +39,13 @@ export function useDados(): Dados {
       setSnaps(s);
       setFonte('servidor');
       setErro(null);
+      // Agenda e clima: o servidor relê se a última leitura passou de 30 min; se releu, busca de novo.
+      void externos(1)
+        .then(async (x) => {
+          const mais = (em: number | null, env?: { generatedAt: string }) => em !== null && (!env || em > Date.parse(env.generatedAt) + 1000);
+          if (mais(x.status.clima.em, s.clima) || mais(x.status.agenda.em, s.agenda)) setSnaps(await buscarSnapshots());
+        })
+        .catch(() => {});
     } catch (e) {
       setErro((e as Error).message);
       if (snapshotsEmCache()) setFonte('cache');

@@ -6,7 +6,7 @@
  * "achados" só aparecem quando cada lado tem pelo menos MIN_DIAS dias.
  */
 import { arred, DIA, diaLocal, ehGasto, estadias, horaLocal, horasPorCategoria, inicioDoDia, type Estadia } from './metrics.js';
-import type { FinTransacao, HumorData, SaudeData, SaudeDia, Snapshots } from './types.js';
+import type { AgendaEvento, ClimaDia, FinTransacao, HumorData, SaudeData, SaudeDia, Snapshots } from './types.js';
 
 export const MIN_DIAS = 3;
 const FUSO = '-03:00';
@@ -37,6 +37,29 @@ export interface DiaBemEstar {
   gasto: number;
   gastoImpulso: number;
   tipo: string;
+  /** compromissos com horário (sem os de dia inteiro e os marcados como disponível); null sem agenda */
+  compromissos: number | null;
+  horasAgenda: number | null;
+  /** hora (decimal) do primeiro compromisso do dia */
+  primeiroCompromisso: number | null;
+  tMax: number | null;
+  chuvaMm: number | null;
+}
+
+/** Compromissos que ocupam o horário, agrupados pelo dia em que começam. */
+export function agendaPorDia(eventos: AgendaEvento[]): Map<string, { n: number; horas: number; primeiro: number }> {
+  const m = new Map<string, { n: number; horas: number; primeiro: number }>();
+  for (const e of eventos) {
+    if (e.diaInteiro || e.livre) continue;
+    const d = diaLocal(e.inicio);
+    const hora = arred((((e.inicio - 3 * 3_600_000) % DIA) + DIA) % DIA / 3_600_000, 2);
+    const atual = m.get(d) ?? { n: 0, horas: 0, primeiro: 24 };
+    atual.n += 1;
+    atual.horas += Math.min(12, Math.max(0, e.fim - e.inicio) / 3_600_000);
+    atual.primeiro = Math.min(atual.primeiro, hora);
+    m.set(d, atual);
+  }
+  return m;
 }
 
 function inicioDia(dia: string): number {
@@ -62,6 +85,9 @@ export function montarDias(s: Snapshots, desde: number, agora: number): DiaBemEs
   const rotina = s.routinetracker?.data;
   const fin = s.retrofin?.data;
   const lista: Estadia[] = estadias(rotina, agora);
+  const agenda = s.agenda?.data;
+  const agendaDia = agendaPorDia(agenda?.eventos ?? []);
+  const climaDia = new Map<string, ClimaDia>((s.clima?.data?.dias ?? []).map((c) => [c.dia, c]));
 
   const humorDia = new Map<string, number[]>();
   for (const r of humor?.registros ?? []) {
@@ -110,6 +136,12 @@ export function montarDias(s: Snapshots, desde: number, agora: number): DiaBemEs
       gasto: arred(g?.total ?? 0),
       gastoImpulso: arred(g?.impulso ?? 0),
       tipo: rotina ? tipoDoDia(horas, treinou) : treinou ? 'Dia com treino' : 'Dia sem treino',
+      // dia fora da janela lida da agenda = sem informação, não "dia livre"
+      compromissos: agenda && ini >= agenda.desde ? (agendaDia.get(dia)?.n ?? 0) : null,
+      horasAgenda: agenda && ini >= agenda.desde ? arred(agendaDia.get(dia)?.horas ?? 0, 1) : null,
+      primeiroCompromisso: agendaDia.get(dia)?.primeiro ?? null,
+      tMax: climaDia.get(dia)?.tMax ?? null,
+      chuvaMm: climaDia.get(dia)?.chuvaMm ?? null,
     });
   }
   return out;
@@ -181,6 +213,26 @@ export function efeitoTreino(dias: DiaBemEstar[]): { com: Grupo; sem: Grupo; son
     media(dias.flatMap((d, i) => (d.treinou === filtro && dias[i + 1]?.sonoH != null ? [dias[i + 1].sonoH as number] : [])));
   return { com, sem, sonoDepoisCom: seguinte(true), sonoDepoisSem: seguinte(false) };
 }
+
+const FAIXAS_AGENDA = ['Dia livre', '1 a 2 compromissos', '3 ou mais'];
+/** Carga da agenda × humor, sono e gastos. */
+export const porAgenda = (dias: DiaBemEstar[]) =>
+  agrupar(dias, (d) => (d.compromissos === null ? null : d.compromissos === 0 ? FAIXAS_AGENDA[0] : d.compromissos <= 2 ? FAIXAS_AGENDA[1] : FAIXAS_AGENDA[2]), FAIXAS_AGENDA);
+
+const FAIXAS_CEDO = ['Começa antes das 9h', 'Começa às 9h ou depois'];
+/** Sono da noite antes de um dia com compromisso cedo (o sono pertence ao dia em que acordou). */
+export const porCompromissoCedo = (dias: DiaBemEstar[]) =>
+  agrupar(dias, (d) => (d.primeiroCompromisso === null ? null : d.primeiroCompromisso < 9 ? FAIXAS_CEDO[0] : FAIXAS_CEDO[1]), FAIXAS_CEDO);
+
+export const CHUVA_MM = 2;
+export const CALOR_C = 30;
+const FAIXAS_CLIMA = ['Chuva', 'Quente (30 °C+)', 'Seco'];
+export function tipoClima(tMax: number, chuvaMm: number): string {
+  return chuvaMm >= CHUVA_MM ? FAIXAS_CLIMA[0] : tMax >= CALOR_C ? FAIXAS_CLIMA[1] : FAIXAS_CLIMA[2];
+}
+/** Clima do dia × humor, passos e gastos. */
+export const porClima = (dias: DiaBemEstar[]) =>
+  agrupar(dias, (d) => (d.tMax === null || d.chuvaMm === null ? null : tipoClima(d.tMax, d.chuvaMm)), FAIXAS_CLIMA);
 
 function vazio(rotulo: string): Grupo {
   return { rotulo, dias: 0, diasHumor: 0, humor: null, sonoH: null, passos: null, gasto: null, gastoImpulso: null };
@@ -259,6 +311,37 @@ export function achados(dias: DiaBemEstar[]): Achado[] {
     out.push({ texto: `Nos dias ruins o gasto por impulso sobe para ${brl(ruins.gastoImpulso)} por dia, contra ${brl(bons.gastoImpulso)} nos dias bons.`, peso: (ruins.gastoImpulso - bons.gastoImpulso) / Math.max(1, ruins.gastoImpulso) });
   }
 
+  const ag = porAgenda(dias);
+  const livre = ag.find((g) => g.rotulo === 'Dia livre');
+  const cheio = ag.find((g) => g.rotulo === '3 ou mais');
+  if (livre && cheio) {
+    if (ok(livre, cheio) && livre.humor !== null && cheio.humor !== null && Math.abs(livre.humor - cheio.humor) >= 0.3) {
+      out.push({ texto: `Com 3 ou mais compromissos na agenda, o humor fica em ${fmt(cheio.humor)}; nos dias livres, ${fmt(livre.humor)}.`, peso: Math.abs(livre.humor - cheio.humor) / 4 });
+    }
+    if (ok(livre, cheio, 'dias') && cheio.gastoImpulso !== null && livre.gastoImpulso !== null && cheio.gastoImpulso > Math.max(10, livre.gastoImpulso * 1.3)) {
+      out.push({ texto: `Em dia de agenda cheia o gasto com delivery, lanches e lazer vai a ${brl(cheio.gastoImpulso)}, contra ${brl(livre.gastoImpulso)} nos dias livres.`, peso: (cheio.gastoImpulso - livre.gastoImpulso) / Math.max(1, cheio.gastoImpulso) });
+    }
+  }
+  const cedo = porCompromissoCedo(dias);
+  if (cedo.length === 2 && cedo[0].sonoH !== null && cedo[1].sonoH !== null && cedo[0].dias >= MIN_DIAS && cedo[1].dias >= MIN_DIAS && cedo[1].sonoH - cedo[0].sonoH >= 0.3) {
+    out.push({ texto: `Na noite antes de compromisso antes das 9h você dorme ${fmt(cedo[0].sonoH)} h, contra ${fmt(cedo[1].sonoH)} h quando o dia começa mais tarde.`, peso: (cedo[1].sonoH - cedo[0].sonoH) / 8 });
+  }
+
+  const cl = porClima(dias);
+  const chuva = cl.find((g) => g.rotulo === 'Chuva');
+  const seco = cl.find((g) => g.rotulo === 'Seco');
+  if (chuva && seco) {
+    if (ok(chuva, seco) && chuva.humor !== null && seco.humor !== null && Math.abs(chuva.humor - seco.humor) >= 0.3) {
+      out.push({ texto: `Em dia de chuva seu humor fica em ${fmt(chuva.humor)}, contra ${fmt(seco.humor)} nos dias secos.`, peso: Math.abs(chuva.humor - seco.humor) / 4 });
+    }
+    if (ok(chuva, seco, 'dias') && chuva.passos !== null && seco.passos !== null && seco.passos > chuva.passos * 1.2) {
+      out.push({ texto: `A chuva derruba seus passos: ${chuva.passos.toLocaleString('pt-BR')} por dia, contra ${seco.passos.toLocaleString('pt-BR')} nos dias secos.`, peso: (seco.passos - chuva.passos) / seco.passos });
+    }
+    if (ok(chuva, seco, 'dias') && chuva.gastoImpulso !== null && seco.gastoImpulso !== null && chuva.gastoImpulso > Math.max(10, seco.gastoImpulso * 1.3)) {
+      out.push({ texto: `Dia de chuva custa mais: ${brl(chuva.gastoImpulso)} em delivery, lanches e lazer, contra ${brl(seco.gastoImpulso)} nos dias secos.`, peso: (chuva.gastoImpulso - seco.gastoImpulso) / Math.max(1, chuva.gastoImpulso) });
+    }
+  }
+
   const tipos = humorPorTipoDia(dias).filter((g) => g.diasHumor >= MIN_DIAS && g.humor !== null);
   if (tipos.length >= 2) {
     const topo = tipos[0];
@@ -267,7 +350,7 @@ export function achados(dias: DiaBemEstar[]): Achado[] {
       out.push({ texto: `Seu melhor tipo de dia é "${topo.rotulo}" (humor ${fmt(topo.humor!)}); o mais baixo é "${base.rotulo}" (${fmt(base.humor!)}).`, peso: (topo.humor! - base.humor!) / 4 });
     }
   }
-  return out.sort((a, b) => b.peso - a.peso).slice(0, 5);
+  return out.sort((a, b) => b.peso - a.peso).slice(0, 6);
 }
 
 // ------------------------------------------------------------------ tudo junto
@@ -276,7 +359,12 @@ export interface BemEstar {
   diasAnalisados: number;
   diasComHumor: number;
   temSaude: boolean;
+  temAgenda: boolean;
+  temClima: boolean;
   porTipoDia: Grupo[];
+  porAgenda: Grupo[];
+  porCompromissoCedo: Grupo[];
+  porClima: Grupo[];
   porDiaSemana: Grupo[];
   porSono: Grupo[];
   porHumor: Grupo[];
@@ -297,7 +385,12 @@ export function montarBemEstar(s: Snapshots, agora = Date.now(), diasJanela = 60
     diasAnalisados: dias.length,
     diasComHumor: dias.filter((d) => d.humor !== null).length,
     temSaude: Boolean(s.saude),
+    temAgenda: Boolean(s.agenda),
+    temClima: Boolean(s.clima),
     porTipoDia: humorPorTipoDia(dias),
+    porAgenda: porAgenda(dias),
+    porCompromissoCedo: porCompromissoCedo(dias),
+    porClima: porClima(dias),
     porDiaSemana: humorPorDiaSemana(dias),
     porSono: porSono(dias),
     porHumor: porHumor(dias),
